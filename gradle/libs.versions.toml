@@ -16,7 +16,7 @@ nav3 = "1.1.7"
 kotlinxSerializationCore = "1.11.0"
 androidxTestCore = "1.7.0"
 coroutinesTest = "1.11.0"
-robolectric = "4.16.1"
+robolectric = "4.17"
 datastorePreferences = "1.2.1"
 aboutLibraries = "15.2.0"
 
