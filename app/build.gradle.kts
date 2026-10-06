@@ -80,10 +80,22 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             all {
-                // Robolectric 4.17 の FileDescriptorInterceptor が
-                // jdk.internal.access.SharedSecrets にリフレクションで触るため、
-                // JDK 17+ のモジュール境界を開けないと全テストが起動時に落ちる。
-                it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+                // Robolectric は OpenJDK の内部クラスにリフレクションで触るため、
+                // JDK 17+ ではモジュール境界を開けないとテストが起動時に落ちる。
+                // 一覧は https://robolectric.org/getting-started/ の
+                // "Running with Java 17 and higher" に揃えている。個別に足すと、
+                // 未到達のコードパスを踏んだ時点で別フラグ不足として再発する。
+                it.jvmArgs(
+                    "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                    "--add-opens=java.base/java.util=ALL-UNNAMED",
+                    "--add-opens=java.base/java.io=ALL-UNNAMED",
+                    "--add-opens=java.base/java.net=ALL-UNNAMED",
+                    "--add-opens=java.base/java.security=ALL-UNNAMED",
+                    "--add-opens=java.base/java.text=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                    "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                    "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+                )
             }
         }
     }
