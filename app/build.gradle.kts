@@ -80,11 +80,8 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             all {
-                // Robolectric は OpenJDK の内部クラスにリフレクションで触るため、
-                // JDK 17+ ではモジュール境界を開けないとテストが起動時に落ちる。
-                // 一覧は https://robolectric.org/getting-started/ の
-                // "Running with Java 17 and higher" に揃えている。個別に足すと、
-                // 未到達のコードパスを踏んだ時点で別フラグ不足として再発する。
+                // https://robolectric.org/getting-started/
+                // "Running with Java 17 and higher"
                 it.jvmArgs(
                     "--add-opens=java.base/java.lang=ALL-UNNAMED",
                     "--add-opens=java.base/java.util=ALL-UNNAMED",
