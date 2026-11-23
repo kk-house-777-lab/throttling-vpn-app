@@ -24,14 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.ln
+import okoge.house.throttling_app.data.VpnMode
 import kotlin.math.exp
 import kotlin.math.roundToInt
-
-enum class VpnMode {
-    Block,
-    Throttle,
-    Unlimited,
-}
 
 @Composable
 fun MainScreen(

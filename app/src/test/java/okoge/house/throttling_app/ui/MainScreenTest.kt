@@ -1,5 +1,6 @@
 package okoge.house.throttling_app.ui
 
+import okoge.house.throttling_app.data.VpnMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled

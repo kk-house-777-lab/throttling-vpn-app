@@ -36,11 +36,12 @@ import kotlinx.serialization.Serializable
 import okoge.house.throttling_app.data.InstalledApp
 import okoge.house.throttling_app.data.InstalledAppsProvider
 import okoge.house.throttling_app.data.InstalledAppsProviderImpl
-import okoge.house.throttling_app.data.TargetAppRepository
+import okoge.house.throttling_app.data.AppDataRepository
+import okoge.house.throttling_app.data.VpnMode
+import okoge.house.throttling_app.data.appDataStore
 import okoge.house.throttling_app.ui.AppListScreen
 import okoge.house.throttling_app.ui.LicenseScreen
 import okoge.house.throttling_app.ui.MainScreen
-import okoge.house.throttling_app.ui.VpnMode
 import okoge.house.throttling_app.ui.kbpsToKBps
 import okoge.house.throttling_app.ui.sliderToKbps
 import okoge.house.throttling_app.ui.theme.ThrottlingappTheme
@@ -61,7 +62,7 @@ class MainActivity : ComponentActivity() {
     private var selectedMode by mutableStateOf(VpnMode.Throttle)
     private var sliderValue by mutableFloatStateOf(0.5f)
 
-    private lateinit var repository: TargetAppRepository
+    private lateinit var repository: AppDataRepository
     private lateinit var installedAppsProvider: InstalledAppsProvider
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -87,7 +88,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        repository = TargetAppRepository(applicationContext)
+        repository = AppDataRepository(applicationContext.appDataStore)
         installedAppsProvider = InstalledAppsProviderImpl(applicationContext)
         setContent {
             ThrottlingappTheme {

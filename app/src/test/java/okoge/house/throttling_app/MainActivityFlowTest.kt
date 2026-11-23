@@ -11,8 +11,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import okoge.house.throttling_app.data.TargetAppRepository
-import okoge.house.throttling_app.data.dataStore
+import okoge.house.throttling_app.data.AppDataRepository
+import okoge.house.throttling_app.data.appDataStore
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -48,7 +48,7 @@ class MainActivityFlowTest {
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         // null == VPN consent already granted, so VpnService.prepare() skips the system dialog.
         ShadowVpnService.setPrepareResult(null)
-        runBlocking { app.dataStore.edit { it.clear() } }
+        runBlocking { app.appDataStore.edit { it.clear() } }
     }
 
     @Test
@@ -72,7 +72,7 @@ class MainActivityFlowTest {
         composeTestRule.onNodeWithContentDescription("Back").performClick()
         waitUntilTextShown("Target: 2 apps")
 
-        val repository = TargetAppRepository(controller.get().applicationContext)
+        val repository = AppDataRepository(controller.get().applicationContext.appDataStore)
         val targetApps = runBlocking {
             withTimeout(5_000) {
                 repository.targetApps.first { it.contains("com.example.target") }

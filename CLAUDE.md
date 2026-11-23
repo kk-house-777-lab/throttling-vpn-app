@@ -50,7 +50,7 @@ Key components:
 - **ThrottleVpnService** — Android VpnService that creates TUN interface, passes FD to Go layer. Handles start/stop/setSpeed intents. Stops automatically via `onTaskRemoved` when app is killed.
 - **Go tun2sockslib** — Creates Unix socketpair between TUN and tun2socks engine. Runs bidirectional relay goroutines with `golang.org/x/time/rate.Limiter` (token bucket) on each direction. Exposed functions: `Start(fd, speedKbps)`, `SetSpeed(speedKbps)`, `Stop()`.
 - **MainActivity** — Compose UI with Navigation 3. Handles VPN + notification permission flow (Android 13+ POST_NOTIFICATIONS). Speed slider uses logarithmic mapping.
-- **TargetAppRepository** — DataStore Preferences for persisting target app list.
+- **AppDataRepository** — App-wide DataStore Preferences (`app_data`) for the target app list, VPN mode and throttle speed. `TargetAppsDataStoreMigration` moves data from the old per-feature `target_apps` file on first read, so the old file name must not be reused.
 
 **Speed units:** UI displays kbps. Go layer expects KB/s. Conversion: `kbpsToKBps() = kbps / 8`. Speed modes: Block (< 0), Unlimited (0), Throttle (> 0).
 
