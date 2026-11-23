@@ -58,7 +58,11 @@ class AppListViewModelTest {
     }
 
     @Test
-    fun `インストール済みアプリの一覧がUiStateに出る`() {
+    fun `画面を開いて一覧を読み込むとインストール済みアプリがUiStateに出る`() {
+        assertEquals(emptyList<InstalledApp>(), awaitState { true }.installedApps)
+
+        viewModel.loadInstalledApps()
+
         assertEquals(installed, awaitState { it.installedApps.isNotEmpty() }.installedApps)
     }
 
@@ -73,12 +77,5 @@ class AppListViewModelTest {
         viewModel.onEvent(AppListEvent.RemoveApp("com.example.a"))
         val removed = awaitState { "com.example.a" !in it.targetApps }
         assertEquals(setOf("okoge.house.throttling_app.testapp"), removed.targetApps)
-    }
-
-    @Test
-    fun `ピッカーの検索語がUiStateに出る`() {
-        viewModel.onEvent(AppListEvent.ChangePickerQuery("App"))
-
-        assertEquals("App", awaitState { it.pickerQuery == "App" }.pickerQuery)
     }
 }

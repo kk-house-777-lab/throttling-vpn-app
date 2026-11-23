@@ -64,7 +64,9 @@ internal class MainViewModel(
                 val kbps = draggingKbps ?: return
                 viewModelScope.launch {
                     repository.setThrottleKbps(kbps)
-                    draggingKbps = null
+                    // 保存した値が届いてから外す。先に外すと古い値が一瞬見え、保存中に始めた次のドラッグも消してしまう
+                    repository.throttleKbps.first { it == kbps }
+                    if (draggingKbps == kbps) draggingKbps = null
                     if (vpnStatusHolder.status is VpnStatus.Running && repository.vpnMode.first() == VpnMode.Throttle) {
                         sendSpeed()
                     }

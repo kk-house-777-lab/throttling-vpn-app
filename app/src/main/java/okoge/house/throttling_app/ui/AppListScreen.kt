@@ -185,19 +185,13 @@ internal fun AppListScreen(
     }
 
     if (showPicker) {
-        val closePicker = {
-            showPicker = false
-            onEvent(AppListEvent.ChangePickerQuery(""))
-        }
         InstalledAppPickerDialog(
             apps = uiState.installedApps.filter { it.packageName !in uiState.targetApps },
-            query = uiState.pickerQuery,
-            onQueryChange = { onEvent(AppListEvent.ChangePickerQuery(it)) },
             onSelect = { app ->
                 onEvent(AppListEvent.AddApp(app.packageName))
-                closePicker()
+                showPicker = false
             },
-            onDismiss = closePicker,
+            onDismiss = { showPicker = false },
         )
     }
 }
@@ -206,11 +200,11 @@ internal fun AppListScreen(
 @Composable
 private fun InstalledAppPickerDialog(
     apps: List<InstalledApp>,
-    query: String,
-    onQueryChange: (String) -> Unit,
     onSelect: (InstalledApp) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // TextField には同期的に値を返す必要があるので、ViewModel を経由させずここで持つ
+    var query by rememberSaveable { mutableStateOf("") }
     val filtered = remember(apps, query) {
         if (query.isBlank()) {
             apps
@@ -232,7 +226,7 @@ private fun InstalledAppPickerDialog(
             Column {
                 OutlinedTextField(
                     value = query,
-                    onValueChange = onQueryChange,
+                    onValueChange = { query = it },
                     label = { Text("Search") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),

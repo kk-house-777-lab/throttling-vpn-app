@@ -21,6 +21,7 @@ import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -29,9 +30,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.serialization.Serializable
-import okoge.house.throttling_app.data.AppDataRepository
 import okoge.house.throttling_app.data.InstalledAppsProviderImpl
-import okoge.house.throttling_app.data.appDataStore
 import okoge.house.throttling_app.ui.AppListScreen
 import okoge.house.throttling_app.ui.AppListViewModel
 import okoge.house.throttling_app.ui.LicenseScreen
@@ -54,7 +53,7 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 val app = application as ThrottlingApplication
-                MainViewModel(app, app.vpnStatusHolder, AppDataRepository(app.appDataStore))
+                MainViewModel(app, app.vpnStatusHolder, app.appDataRepository)
             }
         }
     }
@@ -62,7 +61,8 @@ class MainActivity : ComponentActivity() {
     private val appListViewModel: AppListViewModel by viewModels {
         viewModelFactory {
             initializer {
-                AppListViewModel(AppDataRepository(application.appDataStore), InstalledAppsProviderImpl(application))
+                val app = application as ThrottlingApplication
+                AppListViewModel(app.appDataRepository, InstalledAppsProviderImpl(app))
             }
         }
     }
@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
                 val isTwoPane = paneDirective.maxHorizontalPartitions > 1
                 val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = paneDirective)
                 val appListPane: @Composable (onBack: (() -> Unit)?) -> Unit = { onBack ->
+                    LaunchedEffect(Unit) { appListViewModel.loadInstalledApps() }
                     AppListScreen(
                         uiState = appListViewModel.uiState.value,
                         onEvent = appListViewModel::onEvent,

@@ -5,7 +5,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,28 +20,27 @@ internal class AppListViewModel(
     private val installedAppsProvider: InstalledAppsProvider,
 ) : ViewModel() {
 
-    private var pickerQuery by mutableStateOf("")
+    private var installedApps by mutableStateOf(emptyList<InstalledApp>())
 
     val uiState: State<AppListUiState> = transform(
         initialValue = AppListUiState(),
         scope = viewModelScope,
     ) {
         val targetApps by repository.targetApps.collectAsState(initial = emptySet())
-        val installedApps by produceState(initialValue = emptyList<InstalledApp>()) {
-            value = withContext(Dispatchers.IO) { installedAppsProvider.listInstalledApps() }
+        AppListUiState(targetApps = targetApps, installedApps = installedApps)
+    }
+
+    // 画面を開くたびに読み直す。アプリを起動したまま入れたり消したりしたアプリも一覧に反映するため
+    fun loadInstalledApps() {
+        viewModelScope.launch {
+            installedApps = withContext(Dispatchers.IO) { installedAppsProvider.listInstalledApps() }
         }
-        AppListUiState(
-            targetApps = targetApps,
-            installedApps = installedApps,
-            pickerQuery = pickerQuery,
-        )
     }
 
     fun onEvent(event: AppListEvent) {
         when (event) {
             is AppListEvent.AddApp -> viewModelScope.launch { repository.addApp(event.packageName) }
             is AppListEvent.RemoveApp -> viewModelScope.launch { repository.removeApp(event.packageName) }
-            is AppListEvent.ChangePickerQuery -> pickerQuery = event.query
         }
     }
 }
