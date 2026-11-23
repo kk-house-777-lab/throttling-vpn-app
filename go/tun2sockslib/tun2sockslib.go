@@ -42,14 +42,15 @@ var (
 //  2. Pass one end (engineFd) to tun2socks
 //  3. Relay packets between the other end (proxyFd) and the TUN fd
 //  4. Apply token bucket rate limiting during relay
-func Start(fd int, speedKbps int) {
+func Start(fd int, speedKbps int) error {
 	mu.Lock()
 	defer mu.Unlock()
 
 	fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_DGRAM, 0)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "socketpair failed: %v\n", err)
-		return
+		// Kotlin 側は detachFd で TUN の fd を手放しているので、失敗時はここで閉じないと漏れる
+		_ = syscall.Close(fd)
+		return fmt.Errorf("socketpair failed: %w", err)
 	}
 	proxyFd := fds[0]  // used by throttle layer
 	engineFd := fds[1] // passed to tun2socks engine
@@ -76,6 +77,7 @@ func Start(fd int, speedKbps int) {
 
 	// Start throttle goroutines
 	startRelay(speedKbps)
+	return nil
 }
 
 // SetSpeed dynamically changes the rate limit. No VPN restart required.

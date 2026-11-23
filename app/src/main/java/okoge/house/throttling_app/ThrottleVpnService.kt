@@ -8,14 +8,13 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
-import android.os.ParcelFileDescriptor
 import android.util.Log
 
 class ThrottleVpnService : VpnService() {
 
-    private var vpnInterface: ParcelFileDescriptor? = null
-    private var isRunning = false
-    private var currentSpeedKBps = 0
+    internal var tunnelEngine: TunnelEngine = GoTunnelEngine
+    private val holder get() = (application as ThrottlingApplication).vpnStatusHolder
+    private val tunnel by lazy { VpnTunnel(holder, tunnelEngine) }
 
     companion object {
         private const val TAG = "ThrottleVpnService"
@@ -44,23 +43,35 @@ class ThrottleVpnService : VpnService() {
                 return START_NOT_STICKY
             }
             ACTION_SET_SPEED -> {
+                // VPN が動いていないのに速度変更だけで起こされた場合、フォアグラウンドでない Service を残さない
+                if (holder.status !is VpnStatus.Running) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
                 val speedKbps = intent.getIntExtra(EXTRA_SPEED_KBPS, 0)
                 Log.i(TAG, "Changing speed to $speedKbps KB/s")
-                currentSpeedKBps = speedKbps
-                tun2sockslib.Tun2sockslib.setSpeed(speedKbps.toLong())
-                updateNotification()
+                tunnel.setSpeed(speedKbps)
+                updateNotification(speedKbps)
                 return START_STICKY
             }
         }
         val speedKbps = intent.getIntExtra(EXTRA_SPEED_KBPS, 0)
-        currentSpeedKBps = speedKbps
+        // すでに動作中なら開始は何もしないので、通知も実際に動いている速度で出す
+        val notification = buildNotification((holder.status as? VpnStatus.Running)?.speedKBps ?: speedKbps)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
         } else {
-            startForeground(NOTIFICATION_ID, buildNotification())
+            startForeground(NOTIFICATION_ID, notification)
         }
         val targetApps = intent.getStringArrayListExtra(EXTRA_TARGET_APPS) ?: arrayListOf()
-        startVpn(speedKbps, targetApps)
+        Log.i(TAG, "Starting tun2socks (speed=${speedKbps}KB/s, apps=${targetApps.size})")
+        tunnel.start(speedKbps) { establishTun(targetApps) }
+            .onFailure { e ->
+                Log.w(TAG, "Failed to start VPN", e)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
         return START_STICKY
     }
 
@@ -74,10 +85,7 @@ class ThrottleVpnService : VpnService() {
         super.onDestroy()
     }
 
-    private fun startVpn(speedKbps: Int, targetApps: List<String>) {
-        if (isRunning) return
-        isRunning = true
-
+    private fun establishTun(targetApps: List<String>): Int? {
         val builder = Builder()
             .setSession("ThrottleVPN")
             .addAddress("10.0.0.1", 32)
@@ -94,19 +102,12 @@ class ThrottleVpnService : VpnService() {
             }
         }
 
-        vpnInterface = builder.establish() ?: return
-
-        val fd = vpnInterface!!.detachFd()
-        vpnInterface = null
-        Log.i(TAG, "TUN fd=$fd, starting tun2socks (speed=${speedKbps}KB/s, apps=${targetApps.size})")
-        tun2sockslib.Tun2sockslib.start(fd.toLong(), speedKbps.toLong())
-        Log.i(TAG, "tun2socks started")
+        return builder.establish()?.detachFd()
     }
 
     private fun stopVpn() {
         Log.i(TAG, "Stopping tun2socks")
-        isRunning = false
-        tun2sockslib.Tun2sockslib.stop()
+        tunnel.stop()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -121,12 +122,12 @@ class ThrottleVpnService : VpnService() {
         manager.createNotificationChannel(channel)
     }
 
-    private fun updateNotification() {
+    private fun updateNotification(speedKBps: Int) {
         val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(NOTIFICATION_ID, buildNotification())
+        manager.notify(NOTIFICATION_ID, buildNotification(speedKBps))
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(speedKBps: Int): Notification {
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -135,8 +136,8 @@ class ThrottleVpnService : VpnService() {
         )
 
         val modeText = when {
-            currentSpeedKBps < 0 -> "Mode: Block"
-            currentSpeedKBps == 0 -> "Mode: Unlimited"
+            speedKBps < 0 -> "Mode: Block"
+            speedKBps == 0 -> "Mode: Unlimited"
             else -> "Mode: Throttle"
         }
 
