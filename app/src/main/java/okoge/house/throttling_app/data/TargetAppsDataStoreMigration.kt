@@ -12,10 +12,6 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import java.io.File
 
-/**
- * Moves the target app list from the old per-feature DataStore ("target_apps")
- * into the app-wide one, then deletes the old file.
- */
 internal class TargetAppsDataStoreMigration(
     private val legacyFile: File,
 ) : DataMigration<Preferences> {
@@ -23,7 +19,7 @@ internal class TargetAppsDataStoreMigration(
     override suspend fun shouldMigrate(currentData: Preferences): Boolean = legacyFile.exists()
 
     override suspend fun migrate(currentData: Preferences): Preferences {
-        // An absent key means the user never edited the list, so the default must keep applying.
+        // キーがないのは一度も編集していないということなので、デフォルトが効く状態のまま残す
         val legacyApps = readLegacy()[TARGET_APPS_KEY] ?: return currentData
         if (currentData[TARGET_APPS_KEY] != null) return currentData
         return currentData.toMutablePreferences().apply {
@@ -37,9 +33,9 @@ internal class TargetAppsDataStoreMigration(
 
     private suspend fun readLegacy(): Preferences {
         val job = SupervisorJob()
-        // DataStore allows one active instance per file; cancelling the scope releases it before cleanUp deletes the file.
+        // DataStore は 1 ファイルに 1 インスタンスしか持てないので、cleanUp で消す前に scope を閉じて手放す
         val legacyStore = PreferenceDataStoreFactory.create(
-            // A corrupted legacy file must not block the app-wide store from opening; treat it as having nothing to migrate.
+            // 旧ファイルが壊れていても新しいストアを開けるよう、移すものなしとして扱う
             corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
             scope = CoroutineScope(Dispatchers.IO + job),
             produceFile = { legacyFile },

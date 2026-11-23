@@ -24,7 +24,7 @@ internal val TARGET_APPS_KEY = stringSetPreferencesKey("target_app_ids")
 internal val VPN_MODE_KEY = stringPreferencesKey("vpn_mode")
 private val THROTTLE_KBPS_KEY = intPreferencesKey("throttle_kbps")
 
-const val DEFAULT_THROTTLE_KBPS = 500
+private const val DEFAULT_THROTTLE_KBPS = 500
 
 class AppDataRepository(private val dataStore: DataStore<Preferences>) {
 
@@ -35,7 +35,7 @@ class AppDataRepository(private val dataStore: DataStore<Preferences>) {
         prefs[TARGET_APPS_KEY] ?: defaultApps
     }
 
-    // An unknown stored name (e.g. after renaming an enum entry) falls back to the default.
+    // enum の名前を変えると保存済みの値が読めなくなるので、既定値に戻す
     val vpnMode: Flow<VpnMode> = dataStore.data.map { prefs ->
         prefs[VPN_MODE_KEY]?.let { name -> VpnMode.entries.firstOrNull { it.name == name } }
             ?: VpnMode.Throttle
