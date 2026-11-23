@@ -1,5 +1,9 @@
 package okoge.house.throttling_app.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -29,12 +33,14 @@ class AppListScreenTest {
     ) {
         composeTestRule.setContent {
             ThrottlingappTheme {
+                var pickerQuery by remember { mutableStateOf("") }
                 AppListScreen(
-                    uiState = AppListUiState(targetApps = targetApps, installedApps = installedApps),
+                    uiState = AppListUiState(targetApps = targetApps, installedApps = installedApps, pickerQuery = pickerQuery),
                     onEvent = { event ->
                         when (event) {
                             is AppListEvent.AddApp -> onAddApp(event.packageName)
                             is AppListEvent.RemoveApp -> onRemoveApp(event.packageName)
+                            is AppListEvent.ChangePickerQuery -> pickerQuery = event.query
                         }
                     },
                     onBack = onBack,

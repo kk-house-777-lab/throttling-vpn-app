@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,8 +54,8 @@ internal fun AppListScreen(
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    var inputText by remember { mutableStateOf("") }
-    var showPicker by remember { mutableStateOf(false) }
+    var inputText by rememberSaveable { mutableStateOf("") }
+    var showPicker by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier
@@ -184,13 +185,19 @@ internal fun AppListScreen(
     }
 
     if (showPicker) {
+        val closePicker = {
+            showPicker = false
+            onEvent(AppListEvent.ChangePickerQuery(""))
+        }
         InstalledAppPickerDialog(
             apps = uiState.installedApps.filter { it.packageName !in uiState.targetApps },
+            query = uiState.pickerQuery,
+            onQueryChange = { onEvent(AppListEvent.ChangePickerQuery(it)) },
             onSelect = { app ->
                 onEvent(AppListEvent.AddApp(app.packageName))
-                showPicker = false
+                closePicker()
             },
-            onDismiss = { showPicker = false },
+            onDismiss = closePicker,
         )
     }
 }
@@ -199,10 +206,11 @@ internal fun AppListScreen(
 @Composable
 private fun InstalledAppPickerDialog(
     apps: List<InstalledApp>,
+    query: String,
+    onQueryChange: (String) -> Unit,
     onSelect: (InstalledApp) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var query by remember { mutableStateOf("") }
     val filtered = remember(apps, query) {
         if (query.isBlank()) {
             apps
@@ -224,7 +232,7 @@ private fun InstalledAppPickerDialog(
             Column {
                 OutlinedTextField(
                     value = query,
-                    onValueChange = { query = it },
+                    onValueChange = onQueryChange,
                     label = { Text("Search") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
