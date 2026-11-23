@@ -230,7 +230,7 @@ private fun VpnToggleButton(uiState: MainUiState, onToggle: () -> Unit) {
             shapes = MaterialTheme.shapes,
             typography = MaterialTheme.typography,
         ) {
-            val height = ButtonDefaults.LargeContainerHeight
+            val height = ButtonDefaults.MediumContainerHeight
             ToggleButton(
                 checked = uiState.isVpnRunning,
                 onCheckedChange = { onToggle() },
