@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -23,25 +26,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
 import kotlin.math.ln
 import okoge.house.throttling_app.data.VpnMode
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
+// 大画面でボタンやスライダーが横に伸びきらないようにする
+internal val ContentMaxWidth = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp
+
 @Composable
 internal fun MainScreen(
     uiState: MainUiState,
     onEvent: (MainEvent) -> Unit,
-    onNavigateToAppList: () -> Unit,
+    // 2 ペイン表示でアプリ一覧が常に横にあるときは null を渡してボタンを隠す
+    onNavigateToAppList: (() -> Unit)?,
     onNavigateToLicenses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .wrapContentWidth(Alignment.CenterHorizontally)
+            .widthIn(max = ContentMaxWidth)
             .padding(horizontal = 24.dp)
-            .padding(top = 24.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(top = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top,
     ) {
@@ -71,8 +81,10 @@ internal fun MainScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text("Target: ${uiState.targetAppCount} apps")
-        TextButton(onClick = onNavigateToAppList) {
-            Text("Manage →")
+        if (onNavigateToAppList != null) {
+            TextButton(onClick = onNavigateToAppList) {
+                Text("Manage →")
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -194,10 +206,12 @@ private fun ModeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰める
+    val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
     if (selected) {
-        Button(onClick = onClick, modifier = modifier) { Text(label) }
+        Button(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
     } else {
-        OutlinedButton(onClick = onClick, modifier = modifier) { Text(label) }
+        OutlinedButton(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
     }
 }
 
