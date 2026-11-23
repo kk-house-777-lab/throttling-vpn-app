@@ -63,12 +63,13 @@ class TargetAppsDataStoreMigrationTest {
     }
 
     @Test
-    fun `旧ファイルで全アプリを削除していた場合は空集合のまま移りデフォルトに戻らない`() = runTest {
+    fun `旧ファイルで全アプリを削除していた場合は空集合のまま移りデフォルトに戻らず旧ファイルは消える`() = runTest {
         writeLegacy { store -> store.edit { it[TARGET_APPS_KEY] = emptySet() } }
 
         val prefs = newStore().data.first()
 
         assertEquals(emptySet<String>(), prefs[TARGET_APPS_KEY])
+        assertFalse(legacyFile.exists())
     }
 
     @Test
