@@ -29,20 +29,22 @@ import kotlin.math.exp
 import kotlin.math.roundToInt
 
 @Composable
-fun MainScreen(
-    isVpnRunning: Boolean,
-    isTransitioning: Boolean,
-    selectedMode: VpnMode,
-    sliderValue: Float,
-    targetAppCount: Int,
-    onModeChange: (VpnMode) -> Unit,
-    onSliderChange: (Float) -> Unit,
-    onSliderChangeFinished: () -> Unit,
-    onStartStop: () -> Unit,
+internal fun MainScreen(
+    uiState: MainUiState,
+    onEvent: (MainEvent) -> Unit,
     onNavigateToAppList: () -> Unit,
     onNavigateToLicenses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isVpnRunning = uiState.isVpnRunning
+    val isTransitioning = uiState.isTransitioning
+    val selectedMode = uiState.mode
+    val sliderValue = kbpsToSlider(uiState.sliderKbps)
+    val targetAppCount = uiState.targetAppCount
+    val onModeChange: (VpnMode) -> Unit = { onEvent(MainEvent.ChangeMode(it)) }
+    val onSliderChange: (Float) -> Unit = { onEvent(MainEvent.DragSlider(sliderToKbps(it))) }
+    val onSliderChangeFinished: () -> Unit = { onEvent(MainEvent.FinishSlider) }
+    val onStartStop: () -> Unit = { onEvent(MainEvent.ToggleVpn) }
     Column(
         modifier = modifier
             .fillMaxSize()

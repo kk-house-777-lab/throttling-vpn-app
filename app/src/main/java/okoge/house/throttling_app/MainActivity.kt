@@ -38,10 +38,15 @@ import okoge.house.throttling_app.data.InstalledAppsProviderImpl
 import okoge.house.throttling_app.data.AppDataRepository
 import okoge.house.throttling_app.data.VpnMode
 import okoge.house.throttling_app.data.appDataStore
+import okoge.house.throttling_app.ui.AppListEvent
 import okoge.house.throttling_app.ui.AppListScreen
+import okoge.house.throttling_app.ui.AppListUiState
 import okoge.house.throttling_app.ui.LicenseScreen
+import okoge.house.throttling_app.ui.MainEvent
 import okoge.house.throttling_app.ui.MainScreen
+import okoge.house.throttling_app.ui.MainUiState
 import okoge.house.throttling_app.ui.kbpsToKBps
+import okoge.house.throttling_app.ui.kbpsToSlider
 import okoge.house.throttling_app.ui.sliderToKbps
 import okoge.house.throttling_app.ui.theme.ThrottlingappTheme
 
@@ -107,26 +112,30 @@ class MainActivity : ComponentActivity() {
                             entry<MainRoute> {
                                 val vpnStatus = vpnStatusHolder.status
                                 MainScreen(
-                                    isVpnRunning = vpnStatus is VpnStatus.Running,
-                                    isTransitioning = isStartRequested || vpnStatus is VpnStatus.Starting,
-                                    selectedMode = selectedMode,
-                                    sliderValue = sliderValue,
-                                    targetAppCount = targetApps.size,
-                                    onModeChange = { mode ->
-                                        selectedMode = mode
-                                        if (isVpnRunning) sendSpeed()
-                                    },
-                                    onSliderChange = { sliderValue = it },
-                                    onSliderChangeFinished = {
-                                        if (isVpnRunning && selectedMode == VpnMode.Throttle) sendSpeed()
-                                    },
-                                    onStartStop = {
-                                        when {
-                                            isStartRequested || vpnStatus is VpnStatus.Starting -> Unit
-                                            vpnStatus is VpnStatus.Running -> stopVpnService()
-                                            targetApps.isNotEmpty() -> {
-                                                isStartRequested = true
-                                                requestPermissionsAndStart()
+                                    uiState = MainUiState(
+                                        vpnStatus = vpnStatus,
+                                        isStartRequested = isStartRequested,
+                                        mode = selectedMode,
+                                        sliderKbps = sliderToKbps(sliderValue),
+                                        targetAppCount = targetApps.size,
+                                    ),
+                                    onEvent = { event ->
+                                        when (event) {
+                                            is MainEvent.ChangeMode -> {
+                                                selectedMode = event.mode
+                                                if (isVpnRunning) sendSpeed()
+                                            }
+                                            is MainEvent.DragSlider -> sliderValue = kbpsToSlider(event.kbps)
+                                            MainEvent.FinishSlider -> {
+                                                if (isVpnRunning && selectedMode == VpnMode.Throttle) sendSpeed()
+                                            }
+                                            MainEvent.ToggleVpn -> when {
+                                                isStartRequested || vpnStatus is VpnStatus.Starting -> Unit
+                                                vpnStatus is VpnStatus.Running -> stopVpnService()
+                                                targetApps.isNotEmpty() -> {
+                                                    isStartRequested = true
+                                                    requestPermissionsAndStart()
+                                                }
                                             }
                                         }
                                     },
@@ -147,15 +156,14 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 AppListScreen(
-                                    targetApps = targetApps,
-                                    onAddApp = { pkg ->
-                                        lifecycleScope.launch { repository.addApp(pkg) }
-                                    },
-                                    onRemoveApp = { pkg ->
-                                        lifecycleScope.launch { repository.removeApp(pkg) }
+                                    uiState = AppListUiState(targetApps = targetApps, installedApps = installedApps),
+                                    onEvent = { event ->
+                                        when (event) {
+                                            is AppListEvent.AddApp -> lifecycleScope.launch { repository.addApp(event.packageName) }
+                                            is AppListEvent.RemoveApp -> lifecycleScope.launch { repository.removeApp(event.packageName) }
+                                        }
                                     },
                                     onBack = { backStack.removeLastOrNull() },
-                                    installedApps = installedApps,
                                 )
                             }
                         },

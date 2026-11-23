@@ -44,14 +44,16 @@ import okoge.house.throttling_app.data.InstalledApp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppListScreen(
-    targetApps: Set<String>,
-    onAddApp: (String) -> Unit,
-    onRemoveApp: (String) -> Unit,
+internal fun AppListScreen(
+    uiState: AppListUiState,
+    onEvent: (AppListEvent) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    installedApps: List<InstalledApp> = emptyList(),
 ) {
+    val targetApps = uiState.targetApps
+    val installedApps = uiState.installedApps
+    val onAddApp: (String) -> Unit = { onEvent(AppListEvent.AddApp(it)) }
+    val onRemoveApp: (String) -> Unit = { onEvent(AppListEvent.RemoveApp(it)) }
     var inputText by remember { mutableStateOf("") }
     var showPicker by remember { mutableStateOf(false) }
 
