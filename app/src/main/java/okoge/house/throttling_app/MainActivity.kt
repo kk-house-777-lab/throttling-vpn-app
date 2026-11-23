@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -89,6 +93,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3AdaptiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -98,6 +103,24 @@ class MainActivity : ComponentActivity() {
             ThrottlingappTheme {
                 val backStack = remember { mutableStateListOf<Any>(MainRoute) }
                 val targetApps by repository.targetApps.collectAsState(initial = emptySet())
+                val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
+                val appListPane: @Composable (onBack: (() -> Unit)?) -> Unit = { onBack ->
+                    val installedApps by produceState(initialValue = emptyList<InstalledApp>()) {
+                        value = withContext(Dispatchers.IO) {
+                            installedAppsProvider.listInstalledApps()
+                        }
+                    }
+                    AppListScreen(
+                        uiState = AppListUiState(targetApps = targetApps, installedApps = installedApps),
+                        onEvent = { event ->
+                            when (event) {
+                                is AppListEvent.AddApp -> lifecycleScope.launch { repository.addApp(event.packageName) }
+                                is AppListEvent.RemoveApp -> lifecycleScope.launch { repository.removeApp(event.packageName) }
+                            }
+                        },
+                        onBack = onBack,
+                    )
+                }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -107,8 +130,14 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         backStack = backStack,
                         onBack = { backStack.removeLastOrNull() },
+                        sceneStrategies = listOf(listDetailStrategy),
                         entryProvider = entryProvider {
-                            entry<MainRoute> {
+                            // 2 ペインが入る幅では、アプリ一覧を開く前から右側に並べておく
+                            entry<MainRoute>(
+                                metadata = ListDetailSceneStrategy.listPane(
+                                    detailPlaceholder = { appListPane(null) },
+                                ),
+                            ) {
                                 val vpnStatus = vpnStatusHolder.status
                                 MainScreen(
                                     uiState = MainUiState(
@@ -152,22 +181,8 @@ class MainActivity : ComponentActivity() {
                                      modifier = Modifier.padding(innerPadding),
                                  )
                              }
-                            entry<AppListRoute> {
-                                val installedApps by produceState(initialValue = emptyList<InstalledApp>()) {
-                                    value = withContext(Dispatchers.IO) {
-                                        installedAppsProvider.listInstalledApps()
-                                    }
-                                }
-                                AppListScreen(
-                                    uiState = AppListUiState(targetApps = targetApps, installedApps = installedApps),
-                                    onEvent = { event ->
-                                        when (event) {
-                                            is AppListEvent.AddApp -> lifecycleScope.launch { repository.addApp(event.packageName) }
-                                            is AppListEvent.RemoveApp -> lifecycleScope.launch { repository.removeApp(event.packageName) }
-                                        }
-                                    },
-                                    onBack = { backStack.removeLastOrNull() },
-                                )
+                            entry<AppListRoute>(metadata = ListDetailSceneStrategy.detailPane()) {
+                                appListPane { backStack.removeLastOrNull() }
                             }
                         },
                     )
