@@ -3,6 +3,7 @@ package okoge.house.throttling_app.ui
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,11 +20,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
@@ -63,33 +66,51 @@ internal fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        VpnStatusText(uiState)
+        // 関係するものをまとまりに入れ、いちばん大事な開始・停止を周りより目立つ面に置く
+        Section(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+            VpnStatusText(uiState)
+            Spacer(modifier = Modifier.height(8.dp))
+            TargetAppsRow(uiState.targetAppCount, onNavigateToAppList)
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        TargetAppsRow(uiState.targetAppCount, onNavigateToAppList)
+        Section(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+            ModeSelector(uiState.mode, onModeChange = { onEvent(MainEvent.ChangeMode(it)) })
+            Spacer(modifier = Modifier.height(24.dp))
+            SpeedControl(
+                kbps = uiState.sliderKbps,
+                enabled = uiState.mode == VpnMode.Throttle,
+                onDrag = { onEvent(MainEvent.DragSlider(it)) },
+                onDragFinished = { onEvent(MainEvent.FinishSlider) },
+            )
+        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        ModeSelector(uiState.mode, onModeChange = { onEvent(MainEvent.ChangeMode(it)) })
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        SpeedControl(
-            kbps = uiState.sliderKbps,
-            enabled = uiState.mode == VpnMode.Throttle,
-            onDrag = { onEvent(MainEvent.DragSlider(it)) },
-            onDragFinished = { onEvent(MainEvent.FinishSlider) },
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        VpnToggleButton(uiState, onToggle = { onEvent(MainEvent.ToggleVpn) })
+        Section(color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+            VpnToggleButton(uiState, onToggle = { onEvent(MainEvent.ToggleVpn) })
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
         TextButton(onClick = onNavigateToLicenses) {
             Text("Open Source Licenses")
         }
+    }
+}
+
+@Composable
+private fun Section(color: Color, content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        color = color,
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            content = content,
+        )
     }
 }
 
