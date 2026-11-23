@@ -6,7 +6,7 @@ plugins {
 android {
     namespace = "okoge.house.throttling_app.testapp"
     compileSdk {
-        version = release(37)
+        version = release(37) { minorApiLevel = 2 }
     }
 
     defaultConfig {

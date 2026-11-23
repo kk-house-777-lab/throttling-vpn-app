@@ -15,7 +15,7 @@ android {
         applicationId = "okoge.house.throttling_app"
         minSdk = 26
         targetSdk = 37
-        compileSdk { version = release(37) }
+        compileSdk { version = release(37) { minorApiLevel = 2 } }
         versionCode = 4
         versionName = "1.0.1"
 
