@@ -57,7 +57,8 @@ class MainActivityFlowTest {
         composeTestRule.waitForIdle()
 
         // Debug builds default to one target app (the bundled test-app package).
-        composeTestRule.onNodeWithText("Target: 1 apps").assertExists()
+        // 画面の状態は ViewModel が DataStore を読み終えてから出るので、表示を待つ
+        waitUntilTextShown("Target: 1 apps")
 
         // Navigate to the app list and register another target package.
         composeTestRule.onNodeWithText("Manage →").performClick()
