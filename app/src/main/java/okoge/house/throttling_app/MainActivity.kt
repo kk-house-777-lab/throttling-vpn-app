@@ -59,6 +59,9 @@ class MainActivity : ComponentActivity() {
     private val vpnStatusHolder get() = (application as ThrottlingApplication).vpnStatusHolder
     private val isVpnRunning get() = vpnStatusHolder.status is VpnStatus.Running
 
+    // 権限ダイアログと対象アプリの読み込みの間は Service がまだ状態を書かないため、二度押しをここで防ぐ
+    private var isStartRequested by mutableStateOf(false)
+
     private var selectedMode by mutableStateOf(VpnMode.Throttle)
     private var sliderValue by mutableFloatStateOf(0.5f)
 
@@ -77,6 +80,8 @@ class MainActivity : ComponentActivity() {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             startVpnService()
+        } else {
+            isStartRequested = false
         }
     }
 
@@ -103,7 +108,7 @@ class MainActivity : ComponentActivity() {
                                 val vpnStatus = vpnStatusHolder.status
                                 MainScreen(
                                     isVpnRunning = vpnStatus is VpnStatus.Running,
-                                    isTransitioning = vpnStatus is VpnStatus.Starting,
+                                    isTransitioning = isStartRequested || vpnStatus is VpnStatus.Starting,
                                     selectedMode = selectedMode,
                                     sliderValue = sliderValue,
                                     targetAppCount = targetApps.size,
@@ -117,9 +122,12 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onStartStop = {
                                         when {
-                                            vpnStatus is VpnStatus.Starting -> Unit
+                                            isStartRequested || vpnStatus is VpnStatus.Starting -> Unit
                                             vpnStatus is VpnStatus.Running -> stopVpnService()
-                                            targetApps.isNotEmpty() -> requestPermissionsAndStart()
+                                            targetApps.isNotEmpty() -> {
+                                                isStartRequested = true
+                                                requestPermissionsAndStart()
+                                            }
                                         }
                                     },
                                     onNavigateToAppList = { backStack.add(AppListRoute) },
@@ -191,6 +199,7 @@ class MainActivity : ComponentActivity() {
                 putStringArrayListExtra(ThrottleVpnService.EXTRA_TARGET_APPS, apps)
             }
             startForegroundService(intent)
+            isStartRequested = false
         }
     }
 
