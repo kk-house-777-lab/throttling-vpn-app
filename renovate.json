@@ -16,6 +16,16 @@
         "androidx.compose.material3:**"
       ],
       "groupName": "androidx compose"
+    },
+    {
+      "description": "ビルドの JDK は gradle/gradle-daemon-jvm.properties で固定し、Android Studio 同梱の JBR に合わせて上げる。CI の setup-java だけをメジャー更新しても実際のビルド JDK は変わらないため無視する",
+      "matchPackageNames": [
+        "java-jdk"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
     }
   ]
 }
