@@ -51,6 +51,8 @@ android {
         create("play") {
             dimension = "store"
             applicationIdSuffix = ".play"
+            // deploy-play が実行番号を渡す。main に versionCode の bump を push しなくて済むようにするため
+            providers.gradleProperty("playVersionCode").orNull?.let { versionCode = it.toInt() }
         }
         create("fdroid") {
             dimension = "store"
