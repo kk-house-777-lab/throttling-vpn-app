@@ -1,10 +1,10 @@
 module tun2sockslib
 
-go 1.25.9
+go 1.26.0
 
 require (
 	github.com/xjasonlyu/tun2socks/v2 v2.6.0
-	golang.org/x/time v0.15.0
+	golang.org/x/time v0.16.0
 )
 
 require (
