@@ -28,7 +28,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,8 +56,9 @@ data object LicenseRoute
 
 class MainActivity : ComponentActivity() {
 
-    private var isVpnRunning by mutableStateOf(false)
-    private var isTransitioning by mutableStateOf(false)
+    private val vpnStatusHolder get() = (application as ThrottlingApplication).vpnStatusHolder
+    private val isVpnRunning get() = vpnStatusHolder.status is VpnStatus.Running
+
     private var selectedMode by mutableStateOf(VpnMode.Throttle)
     private var sliderValue by mutableFloatStateOf(0.5f)
 
@@ -77,11 +77,6 @@ class MainActivity : ComponentActivity() {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             startVpnService()
-        } else {
-            lifecycleScope.launch {
-                delay(1000L)
-                isTransitioning = false
-            }
         }
     }
 
@@ -105,9 +100,10 @@ class MainActivity : ComponentActivity() {
                         onBack = { backStack.removeLastOrNull() },
                         entryProvider = entryProvider {
                             entry<MainRoute> {
+                                val vpnStatus = vpnStatusHolder.status
                                 MainScreen(
-                                    isVpnRunning = isVpnRunning,
-                                    isTransitioning = isTransitioning,
+                                    isVpnRunning = vpnStatus is VpnStatus.Running,
+                                    isTransitioning = vpnStatus is VpnStatus.Starting,
                                     selectedMode = selectedMode,
                                     sliderValue = sliderValue,
                                     targetAppCount = targetApps.size,
@@ -120,16 +116,10 @@ class MainActivity : ComponentActivity() {
                                         if (isVpnRunning && selectedMode == VpnMode.Throttle) sendSpeed()
                                     },
                                     onStartStop = {
-                                        if (isTransitioning) return@MainScreen
-                                        isTransitioning = true
-                                        if (isVpnRunning) {
-                                            stopVpnService()
-                                        } else {
-                                            if (targetApps.isEmpty()) {
-                                                isTransitioning = false
-                                                return@MainScreen
-                                            }
-                                            requestPermissionsAndStart()
+                                        when {
+                                            vpnStatus is VpnStatus.Starting -> Unit
+                                            vpnStatus is VpnStatus.Running -> stopVpnService()
+                                            targetApps.isNotEmpty() -> requestPermissionsAndStart()
                                         }
                                     },
                                     onNavigateToAppList = { backStack.add(AppListRoute) },
@@ -201,9 +191,6 @@ class MainActivity : ComponentActivity() {
                 putStringArrayListExtra(ThrottleVpnService.EXTRA_TARGET_APPS, apps)
             }
             startForegroundService(intent)
-            isVpnRunning = true
-            delay(1000L)
-            isTransitioning = false
         }
     }
 
@@ -212,11 +199,6 @@ class MainActivity : ComponentActivity() {
             action = ThrottleVpnService.ACTION_STOP
         }
         startService(intent)
-        isVpnRunning = false
-        lifecycleScope.launch {
-            delay(1000L)
-            isTransitioning = false
-        }
     }
 
     private fun sendSpeed() {

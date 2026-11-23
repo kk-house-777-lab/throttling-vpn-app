@@ -83,6 +83,14 @@ class MainActivityFlowTest {
         // Start VPN: with permissions already granted, this should reach the
         // VPN-running state without needing user interaction with system dialogs.
         composeTestRule.onNodeWithText("Start VPN").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        val app = controller.get().application as ThrottlingApplication
+        val startIntent = shadowOf(app).nextStartedService
+        assert(startIntent.component?.className == ThrottleVpnService::class.java.name)
+        assert(startIntent.getStringArrayListExtra(ThrottleVpnService.EXTRA_TARGET_APPS)!!.contains("com.example.target"))
+
+        // Robolectric は Service を動かさないので、Service が開始に成功したときの書き込みを代わりに行う
+        composeTestRule.runOnUiThread { app.vpnStatusHolder.status = VpnStatus.Running(63) }
         waitUntilTextShown("Stop VPN")
 
         controller.destroy()
