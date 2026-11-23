@@ -105,14 +105,18 @@ func Stop() {
 	mu.Lock()
 	defer mu.Unlock()
 
+	// Android からは ACTION_STOP と onDestroy の両方で呼ばれる。tun2socks の engine は停止後も
+	// device を手放さないので、2 回目に engine.Stop() を呼ぶと、再利用されたかもしれない fd 番号を閉じてしまう
+	if tunFile == nil {
+		return
+	}
+
 	stopRelay()
 	engine.Stop()
 	// Close the dup'd fd. This lets the OS recognize there are no more references
 	// to the TUN, fully closing the VPN interface and removing the key icon from the status bar.
-	if tunFile != nil {
-		tunFile.Close()
-		tunFile = nil
-	}
+	tunFile.Close()
+	tunFile = nil
 	if proxyFile != nil {
 		proxyFile.Close()
 		proxyFile = nil
