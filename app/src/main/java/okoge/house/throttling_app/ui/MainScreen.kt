@@ -63,33 +63,69 @@ internal fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = when {
-                !uiState.isVpnRunning -> "VPN is OFF"
-                uiState.mode == VpnMode.Block -> "VPN is ON — BLOCKED"
-                uiState.mode == VpnMode.Unlimited -> "VPN is ON — Unlimited"
-                else -> "VPN is ON — ${formatKbps(uiState.sliderKbps)}"
-            },
-            style = MaterialTheme.typography.titleLarge,
-            color = if (uiState.isVpnRunning) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
+        VpnStatusText(uiState)
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Target: ${uiState.targetAppCount} apps")
+        TargetAppsRow(uiState.targetAppCount, onNavigateToAppList)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        ModeSelector(uiState.mode, onModeChange = { onEvent(MainEvent.ChangeMode(it)) })
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        SpeedControl(
+            kbps = uiState.sliderKbps,
+            enabled = uiState.mode == VpnMode.Throttle,
+            onDrag = { onEvent(MainEvent.DragSlider(it)) },
+            onDragFinished = { onEvent(MainEvent.FinishSlider) },
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        VpnToggleButton(uiState, onToggle = { onEvent(MainEvent.ToggleVpn) })
+
+        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(onClick = onNavigateToLicenses) {
+            Text("Open Source Licenses")
+        }
+    }
+}
+
+@Composable
+private fun VpnStatusText(uiState: MainUiState) {
+    Text(
+        text = when {
+            !uiState.isVpnRunning -> "VPN is OFF"
+            uiState.mode == VpnMode.Block -> "VPN is ON — BLOCKED"
+            uiState.mode == VpnMode.Unlimited -> "VPN is ON — Unlimited"
+            else -> "VPN is ON — ${formatKbps(uiState.sliderKbps)}"
+        },
+        style = MaterialTheme.typography.titleLarge,
+        color = if (uiState.isVpnRunning) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+    )
+}
+
+@Composable
+private fun TargetAppsRow(targetAppCount: Int, onNavigateToAppList: (() -> Unit)?) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Target: $targetAppCount apps")
         if (onNavigateToAppList != null) {
             TextButton(onClick = onNavigateToAppList) {
                 Text("Manage →")
             }
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Mode selector
+@Composable
+private fun ModeSelector(mode: VpnMode, onModeChange: (VpnMode) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = "Mode",
             style = MaterialTheme.typography.titleMedium,
@@ -101,21 +137,42 @@ internal fun MainScreen(
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ModeButton("Block", uiState.mode == VpnMode.Block, { onEvent(MainEvent.ChangeMode(VpnMode.Block)) }, Modifier.weight(1f))
-            ModeButton("Throttle", uiState.mode == VpnMode.Throttle, { onEvent(MainEvent.ChangeMode(VpnMode.Throttle)) }, Modifier.weight(1f))
-            ModeButton("Unlimited", uiState.mode == VpnMode.Unlimited, { onEvent(MainEvent.ChangeMode(VpnMode.Unlimited)) }, Modifier.weight(1f))
+            ModeButton("Block", mode == VpnMode.Block, { onModeChange(VpnMode.Block) }, Modifier.weight(1f))
+            ModeButton("Throttle", mode == VpnMode.Throttle, { onModeChange(VpnMode.Throttle) }, Modifier.weight(1f))
+            ModeButton("Unlimited", mode == VpnMode.Unlimited, { onModeChange(VpnMode.Unlimited) }, Modifier.weight(1f))
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(24.dp))
+@Composable
+private fun ModeButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰める
+    val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+    if (selected) {
+        Button(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
+    } else {
+        OutlinedButton(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
+    }
+}
 
-        val isThrottleMode = uiState.mode == VpnMode.Throttle
-        val kbps = uiState.sliderKbps
-
+@Composable
+private fun SpeedControl(
+    kbps: Int,
+    enabled: Boolean,
+    onDrag: (Int) -> Unit,
+    onDragFinished: () -> Unit,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = formatKbps(kbps),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = if (isThrottleMode) {
+            color = if (enabled) {
                 MaterialTheme.colorScheme.onSurface
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
@@ -131,11 +188,11 @@ internal fun MainScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Slider(
-            value = kbpsToSlider(uiState.sliderKbps),
-            onValueChange = { onEvent(MainEvent.DragSlider(sliderToKbps(it))) },
-            onValueChangeFinished = { onEvent(MainEvent.FinishSlider) },
+            value = kbpsToSlider(kbps),
+            onValueChange = { onDrag(sliderToKbps(it)) },
+            onValueChangeFinished = onDragFinished,
             valueRange = 0f..1f,
-            enabled = isThrottleMode,
+            enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -152,12 +209,15 @@ internal fun MainScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        val canStart = uiState.isVpnRunning || uiState.targetAppCount > 0
+@Composable
+private fun VpnToggleButton(uiState: MainUiState, onToggle: () -> Unit) {
+    val canStart = uiState.isVpnRunning || uiState.targetAppCount > 0
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Button(
-            onClick = { onEvent(MainEvent.ToggleVpn) },
+            onClick = onToggle,
             enabled = canStart && !uiState.isTransitioning,
             modifier = Modifier.fillMaxWidth(),
             colors = if (uiState.isVpnRunning) {
@@ -191,27 +251,6 @@ internal fun MainScreen(
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
         )
-
-         Spacer(modifier = Modifier.height(16.dp))
-         TextButton(onClick = onNavigateToLicenses) {
-             Text("Open Source Licenses")
-         }
-    }
-}
-
-@Composable
-private fun ModeButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰める
-    val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-    if (selected) {
-        Button(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
-    } else {
-        OutlinedButton(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
     }
 }
 
