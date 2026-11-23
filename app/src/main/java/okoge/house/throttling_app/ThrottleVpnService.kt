@@ -8,13 +8,14 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
-import android.os.ParcelFileDescriptor
 import android.util.Log
 
 class ThrottleVpnService : VpnService() {
 
-    private var vpnInterface: ParcelFileDescriptor? = null
-    private var isRunning = false
+    internal var tunnelEngine: TunnelEngine = GoTunnelEngine
+    private val tunnel by lazy {
+        VpnTunnel((application as ThrottlingApplication).vpnStatusHolder, tunnelEngine)
+    }
     private var currentSpeedKBps = 0
 
     companion object {
@@ -47,7 +48,7 @@ class ThrottleVpnService : VpnService() {
                 val speedKbps = intent.getIntExtra(EXTRA_SPEED_KBPS, 0)
                 Log.i(TAG, "Changing speed to $speedKbps KB/s")
                 currentSpeedKBps = speedKbps
-                tun2sockslib.Tun2sockslib.setSpeed(speedKbps.toLong())
+                tunnel.setSpeed(speedKbps)
                 updateNotification()
                 return START_STICKY
             }
@@ -60,7 +61,14 @@ class ThrottleVpnService : VpnService() {
             startForeground(NOTIFICATION_ID, buildNotification())
         }
         val targetApps = intent.getStringArrayListExtra(EXTRA_TARGET_APPS) ?: arrayListOf()
-        startVpn(speedKbps, targetApps)
+        Log.i(TAG, "Starting tun2socks (speed=${speedKbps}KB/s, apps=${targetApps.size})")
+        tunnel.start(speedKbps) { establishTun(targetApps) }
+            .onFailure { e ->
+                Log.w(TAG, "Failed to start VPN", e)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
         return START_STICKY
     }
 
@@ -74,10 +82,7 @@ class ThrottleVpnService : VpnService() {
         super.onDestroy()
     }
 
-    private fun startVpn(speedKbps: Int, targetApps: List<String>) {
-        if (isRunning) return
-        isRunning = true
-
+    private fun establishTun(targetApps: List<String>): Int? {
         val builder = Builder()
             .setSession("ThrottleVPN")
             .addAddress("10.0.0.1", 32)
@@ -94,19 +99,12 @@ class ThrottleVpnService : VpnService() {
             }
         }
 
-        vpnInterface = builder.establish() ?: return
-
-        val fd = vpnInterface!!.detachFd()
-        vpnInterface = null
-        Log.i(TAG, "TUN fd=$fd, starting tun2socks (speed=${speedKbps}KB/s, apps=${targetApps.size})")
-        tun2sockslib.Tun2sockslib.start(fd.toLong(), speedKbps.toLong())
-        Log.i(TAG, "tun2socks started")
+        return builder.establish()?.detachFd()
     }
 
     private fun stopVpn() {
         Log.i(TAG, "Stopping tun2socks")
-        isRunning = false
-        tun2sockslib.Tun2sockslib.stop()
+        tunnel.stop()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
