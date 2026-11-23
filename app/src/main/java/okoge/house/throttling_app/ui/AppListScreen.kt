@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,8 +54,8 @@ internal fun AppListScreen(
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    var inputText by remember { mutableStateOf("") }
-    var showPicker by remember { mutableStateOf(false) }
+    var inputText by rememberSaveable { mutableStateOf("") }
+    var showPicker by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier
@@ -202,7 +203,8 @@ private fun InstalledAppPickerDialog(
     onSelect: (InstalledApp) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var query by remember { mutableStateOf("") }
+    // TextField には同期的に値を返す必要があるので、ViewModel を経由させずここで持つ
+    var query by rememberSaveable { mutableStateOf("") }
     val filtered = remember(apps, query) {
         if (query.isBlank()) {
             apps
