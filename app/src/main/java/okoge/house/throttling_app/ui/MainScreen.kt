@@ -1,29 +1,46 @@
 package okoge.house.throttling_app.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
@@ -63,33 +80,51 @@ internal fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        VpnStatusText(uiState)
+        // 関係するものをまとまりに入れ、いちばん大事な開始・停止を周りより目立つ面に置く
+        Section(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+            VpnStatusText(uiState)
+            Spacer(modifier = Modifier.height(8.dp))
+            TargetAppsRow(uiState.targetAppCount, onNavigateToAppList)
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        TargetAppsRow(uiState.targetAppCount, onNavigateToAppList)
+        Section(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+            ModeSelector(uiState.mode, onModeChange = { onEvent(MainEvent.ChangeMode(it)) })
+            Spacer(modifier = Modifier.height(24.dp))
+            SpeedControl(
+                kbps = uiState.sliderKbps,
+                enabled = uiState.mode == VpnMode.Throttle,
+                onDrag = { onEvent(MainEvent.DragSlider(it)) },
+                onDragFinished = { onEvent(MainEvent.FinishSlider) },
+            )
+        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        ModeSelector(uiState.mode, onModeChange = { onEvent(MainEvent.ChangeMode(it)) })
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        SpeedControl(
-            kbps = uiState.sliderKbps,
-            enabled = uiState.mode == VpnMode.Throttle,
-            onDrag = { onEvent(MainEvent.DragSlider(it)) },
-            onDragFinished = { onEvent(MainEvent.FinishSlider) },
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        VpnToggleButton(uiState, onToggle = { onEvent(MainEvent.ToggleVpn) })
+        Section(color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+            VpnToggleButton(uiState, onToggle = { onEvent(MainEvent.ToggleVpn) })
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
         TextButton(onClick = onNavigateToLicenses) {
             Text("Open Source Licenses")
         }
+    }
+}
+
+@Composable
+private fun Section(color: Color, content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        color = color,
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            content = content,
+        )
     }
 }
 
@@ -134,29 +169,30 @@ private fun ModeSelector(mode: VpnMode, onModeChange: (VpnMode) -> Unit) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // つながった Button Group にし、選んだものを形と色で強調する
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
         ) {
-            ModeButton("Block", mode == VpnMode.Block, { onModeChange(VpnMode.Block) }, Modifier.weight(1f))
-            ModeButton("Throttle", mode == VpnMode.Throttle, { onModeChange(VpnMode.Throttle) }, Modifier.weight(1f))
-            ModeButton("Unlimited", mode == VpnMode.Unlimited, { onModeChange(VpnMode.Unlimited) }, Modifier.weight(1f))
+            val modes = listOf(VpnMode.Block to "Block", VpnMode.Throttle to "Throttle", VpnMode.Unlimited to "Unlimited")
+            modes.forEachIndexed { index, (value, label) ->
+                ToggleButton(
+                    checked = mode == value,
+                    onCheckedChange = { onModeChange(value) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { role = Role.RadioButton },
+                    shapes = when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        modes.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+                    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰める
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                ) {
+                    Text(label, maxLines = 1)
+                }
+            }
         }
-    }
-}
-
-@Composable
-private fun ModeButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰める
-    val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-    if (selected) {
-        Button(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
-    } else {
-        OutlinedButton(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
     }
 }
 
@@ -167,16 +203,25 @@ private fun SpeedControl(
     onDrag: (Int) -> Unit,
     onDragFinished: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isDragged by interactionSource.collectIsDraggedAsState()
+    // 操作中の値は、まだ VPN に反映されていない。色を変えて、反映済みの値と見分けられるようにする
+    val numberColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            isPressed || isDragged -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.onSurface
+        },
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+    )
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = formatKbps(kbps),
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.displayMediumEmphasized,
+            // 端末の既定フォントでは強調スタイルの太さが控えめなので、今と同じ太字にそろえる
             fontWeight = FontWeight.Bold,
-            color = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            },
+            color = numberColor,
         )
 
         Text(
@@ -193,6 +238,7 @@ private fun SpeedControl(
             onValueChangeFinished = onDragFinished,
             valueRange = 0f..1f,
             enabled = enabled,
+            interactionSource = interactionSource,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -212,27 +258,44 @@ private fun SpeedControl(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun VpnToggleButton(uiState: MainUiState, onToggle: () -> Unit) {
     val canStart = uiState.isVpnRunning || uiState.targetAppCount > 0
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Button(
-            onClick = onToggle,
-            enabled = canStart && !uiState.isTransitioning,
-            modifier = Modifier.fillMaxWidth(),
-            colors = if (uiState.isVpnRunning) {
-                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            } else {
-                ButtonDefaults.buttonColors()
-            },
+        // 画面全体は standard のモーションのまま、山場にするこのボタンだけ expressive で動かす
+        MaterialTheme(
+            colorScheme = MaterialTheme.colorScheme,
+            motionScheme = MotionScheme.expressive(),
+            shapes = MaterialTheme.shapes,
+            typography = MaterialTheme.typography,
         ) {
-            if (uiState.isTransitioning) {
-                CircularProgressIndicator()
-            } else {
-                Text(
-                    text = if (uiState.isVpnRunning) "Stop VPN" else "Start VPN",
-                    style = MaterialTheme.typography.titleMedium,
-                )
+            val height = ButtonDefaults.MediumContainerHeight
+            ToggleButton(
+                checked = uiState.isVpnRunning,
+                onCheckedChange = { onToggle() },
+                enabled = canStart && !uiState.isTransitioning,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = height),
+                // 停止中は丸、動作中は角を立てた形にして、文字を読まなくても状態がわかるようにする
+                shapes = ToggleButtonDefaults.shapesFor(height),
+                colors = ToggleButtonDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedContainerColor = MaterialTheme.colorScheme.error,
+                    checkedContentColor = MaterialTheme.colorScheme.onError,
+                ),
+                contentPadding = ButtonDefaults.contentPaddingFor(height),
+            ) {
+                if (uiState.isTransitioning) {
+                    LoadingIndicator(color = LocalContentColor.current)
+                } else {
+                    Text(
+                        text = if (uiState.isVpnRunning) "Stop VPN" else "Start VPN",
+                        style = ButtonDefaults.textStyleFor(height),
+                    )
+                }
             }
         }
 
