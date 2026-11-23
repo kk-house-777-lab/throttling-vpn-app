@@ -1,5 +1,6 @@
 package okoge.house.throttling_app.ui
 
+import okoge.house.throttling_app.VpnStatus
 import okoge.house.throttling_app.data.VpnMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -36,15 +37,21 @@ class MainScreenTest {
         composeTestRule.setContent {
             ThrottlingappTheme {
                 MainScreen(
-                    isVpnRunning = isVpnRunning,
-                    isTransitioning = isTransitioning,
-                    selectedMode = selectedMode,
-                    sliderValue = sliderValue,
-                    targetAppCount = targetAppCount,
-                    onModeChange = onModeChange,
-                    onSliderChange = onSliderChange,
-                    onSliderChangeFinished = onSliderChangeFinished,
-                    onStartStop = onStartStop,
+                    uiState = MainUiState(
+                        vpnStatus = if (isVpnRunning) VpnStatus.Running(speedKBps = 0) else VpnStatus.Stopped,
+                        isStartRequested = isTransitioning,
+                        mode = selectedMode,
+                        sliderKbps = sliderToKbps(sliderValue),
+                        targetAppCount = targetAppCount,
+                    ),
+                    onEvent = { event ->
+                        when (event) {
+                            is MainEvent.ChangeMode -> onModeChange(event.mode)
+                            is MainEvent.DragSlider -> onSliderChange(kbpsToSlider(event.kbps))
+                            MainEvent.FinishSlider -> onSliderChangeFinished()
+                            MainEvent.ToggleVpn -> onStartStop()
+                        }
+                    },
                     onNavigateToAppList = onNavigateToAppList,
                     onNavigateToLicenses = onNavigateToLicenses,
                 )

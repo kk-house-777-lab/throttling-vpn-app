@@ -29,16 +29,9 @@ import kotlin.math.exp
 import kotlin.math.roundToInt
 
 @Composable
-fun MainScreen(
-    isVpnRunning: Boolean,
-    isTransitioning: Boolean,
-    selectedMode: VpnMode,
-    sliderValue: Float,
-    targetAppCount: Int,
-    onModeChange: (VpnMode) -> Unit,
-    onSliderChange: (Float) -> Unit,
-    onSliderChangeFinished: () -> Unit,
-    onStartStop: () -> Unit,
+internal fun MainScreen(
+    uiState: MainUiState,
+    onEvent: (MainEvent) -> Unit,
     onNavigateToAppList: () -> Unit,
     onNavigateToLicenses: () -> Unit,
     modifier: Modifier = Modifier,
@@ -62,13 +55,13 @@ fun MainScreen(
 
         Text(
             text = when {
-                !isVpnRunning -> "VPN is OFF"
-                selectedMode == VpnMode.Block -> "VPN is ON — BLOCKED"
-                selectedMode == VpnMode.Unlimited -> "VPN is ON — Unlimited"
-                else -> "VPN is ON — ${formatKbps(sliderToKbps(sliderValue))}"
+                !uiState.isVpnRunning -> "VPN is OFF"
+                uiState.mode == VpnMode.Block -> "VPN is ON — BLOCKED"
+                uiState.mode == VpnMode.Unlimited -> "VPN is ON — Unlimited"
+                else -> "VPN is ON — ${formatKbps(uiState.sliderKbps)}"
             },
             style = MaterialTheme.typography.titleLarge,
-            color = if (isVpnRunning) {
+            color = if (uiState.isVpnRunning) {
                 MaterialTheme.colorScheme.primary
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -77,7 +70,7 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Target: $targetAppCount apps")
+        Text("Target: ${uiState.targetAppCount} apps")
         TextButton(onClick = onNavigateToAppList) {
             Text("Manage →")
         }
@@ -96,15 +89,15 @@ fun MainScreen(
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ModeButton("Block", selectedMode == VpnMode.Block, { onModeChange(VpnMode.Block) }, Modifier.weight(1f))
-            ModeButton("Throttle", selectedMode == VpnMode.Throttle, { onModeChange(VpnMode.Throttle) }, Modifier.weight(1f))
-            ModeButton("Unlimited", selectedMode == VpnMode.Unlimited, { onModeChange(VpnMode.Unlimited) }, Modifier.weight(1f))
+            ModeButton("Block", uiState.mode == VpnMode.Block, { onEvent(MainEvent.ChangeMode(VpnMode.Block)) }, Modifier.weight(1f))
+            ModeButton("Throttle", uiState.mode == VpnMode.Throttle, { onEvent(MainEvent.ChangeMode(VpnMode.Throttle)) }, Modifier.weight(1f))
+            ModeButton("Unlimited", uiState.mode == VpnMode.Unlimited, { onEvent(MainEvent.ChangeMode(VpnMode.Unlimited)) }, Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val isThrottleMode = selectedMode == VpnMode.Throttle
-        val kbps = sliderToKbps(sliderValue)
+        val isThrottleMode = uiState.mode == VpnMode.Throttle
+        val kbps = uiState.sliderKbps
 
         Text(
             text = formatKbps(kbps),
@@ -126,9 +119,9 @@ fun MainScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Slider(
-            value = sliderValue,
-            onValueChange = onSliderChange,
-            onValueChangeFinished = onSliderChangeFinished,
+            value = kbpsToSlider(uiState.sliderKbps),
+            onValueChange = { onEvent(MainEvent.DragSlider(sliderToKbps(it))) },
+            onValueChangeFinished = { onEvent(MainEvent.FinishSlider) },
             valueRange = 0f..1f,
             enabled = isThrottleMode,
             modifier = Modifier.fillMaxWidth(),
@@ -150,22 +143,22 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        val canStart = isVpnRunning || targetAppCount > 0
+        val canStart = uiState.isVpnRunning || uiState.targetAppCount > 0
         Button(
-            onClick = onStartStop,
-            enabled = canStart && !isTransitioning,
+            onClick = { onEvent(MainEvent.ToggleVpn) },
+            enabled = canStart && !uiState.isTransitioning,
             modifier = Modifier.fillMaxWidth(),
-            colors = if (isVpnRunning) {
+            colors = if (uiState.isVpnRunning) {
                 ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             } else {
                 ButtonDefaults.buttonColors()
             },
         ) {
-            if (isTransitioning) {
+            if (uiState.isTransitioning) {
                 CircularProgressIndicator()
             } else {
                 Text(
-                    text = if (isVpnRunning) "Stop VPN" else "Start VPN",
+                    text = if (uiState.isVpnRunning) "Stop VPN" else "Start VPN",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }

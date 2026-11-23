@@ -30,11 +30,14 @@ class AppListScreenTest {
         composeTestRule.setContent {
             ThrottlingappTheme {
                 AppListScreen(
-                    targetApps = targetApps,
-                    onAddApp = onAddApp,
-                    onRemoveApp = onRemoveApp,
+                    uiState = AppListUiState(targetApps = targetApps, installedApps = installedApps),
+                    onEvent = { event ->
+                        when (event) {
+                            is AppListEvent.AddApp -> onAddApp(event.packageName)
+                            is AppListEvent.RemoveApp -> onRemoveApp(event.packageName)
+                        }
+                    },
                     onBack = onBack,
-                    installedApps = installedApps,
                 )
             }
         }
