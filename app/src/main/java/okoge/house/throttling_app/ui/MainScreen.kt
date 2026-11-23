@@ -26,13 +26,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
 import kotlin.math.ln
 import okoge.house.throttling_app.data.VpnMode
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
 // 大画面でボタンやスライダーが横に伸びきらないようにする
-internal val ContentMaxWidth = 600.dp
+internal val ContentMaxWidth = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp
 
 @Composable
 internal fun MainScreen(
