@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,6 +31,9 @@ import okoge.house.throttling_app.data.VpnMode
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
+// 大画面でボタンやスライダーが横に伸びきらないようにする
+internal val ContentMaxWidth = 600.dp
+
 @Composable
 internal fun MainScreen(
     uiState: MainUiState,
@@ -39,6 +45,8 @@ internal fun MainScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .wrapContentWidth(Alignment.CenterHorizontally)
+            .widthIn(max = ContentMaxWidth)
             .padding(horizontal = 24.dp)
             .padding(top = 24.dp)
             .verticalScroll(rememberScrollState()),
@@ -194,10 +202,12 @@ private fun ModeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰めて 1 行に収める
+    val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
     if (selected) {
-        Button(onClick = onClick, modifier = modifier) { Text(label) }
+        Button(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label, maxLines = 1) }
     } else {
-        OutlinedButton(onClick = onClick, modifier = modifier) { Text(label) }
+        OutlinedButton(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label, maxLines = 1) }
     }
 }
 
