@@ -50,10 +50,6 @@ internal fun AppListScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val targetApps = uiState.targetApps
-    val installedApps = uiState.installedApps
-    val onAddApp: (String) -> Unit = { onEvent(AppListEvent.AddApp(it)) }
-    val onRemoveApp: (String) -> Unit = { onEvent(AppListEvent.RemoveApp(it)) }
     var inputText by remember { mutableStateOf("") }
     var showPicker by remember { mutableStateOf(false) }
 
@@ -116,7 +112,7 @@ internal fun AppListScreen(
                     onClick = {
                         val trimmed = inputText.trim()
                         if (trimmed.isNotEmpty()) {
-                            onAddApp(trimmed)
+                            onEvent(AppListEvent.AddApp(trimmed))
                             inputText = ""
                         }
                     },
@@ -126,7 +122,7 @@ internal fun AppListScreen(
                 }
             }
 
-            if (installedApps.isNotEmpty()) {
+            if (uiState.installedApps.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(onClick = { showPicker = true }) {
                     Text("Pick from installed apps")
@@ -136,14 +132,14 @@ internal fun AppListScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Registered Apps (${targetApps.size})",
+                text = "Registered Apps (${uiState.targetApps.size})",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (targetApps.isEmpty()) {
+            if (uiState.targetApps.isEmpty()) {
                 Text(
                     text = "No apps registered. Add an application ID above.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -151,7 +147,7 @@ internal fun AppListScreen(
                 )
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(targetApps.sorted()) { packageName ->
+                    items(uiState.targetApps.sorted()) { packageName ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -164,7 +160,7 @@ internal fun AppListScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.weight(1f),
                             )
-                            IconButton(onClick = { onRemoveApp(packageName) }) {
+                            IconButton(onClick = { onEvent(AppListEvent.RemoveApp(packageName)) }) {
                                 Text(
                                     text = "✕",
                                     color = MaterialTheme.colorScheme.error,
@@ -181,9 +177,9 @@ internal fun AppListScreen(
 
     if (showPicker) {
         InstalledAppPickerDialog(
-            apps = installedApps.filter { it.packageName !in targetApps },
+            apps = uiState.installedApps.filter { it.packageName !in uiState.targetApps },
             onSelect = { app ->
-                onAddApp(app.packageName)
+                onEvent(AppListEvent.AddApp(app.packageName))
                 showPicker = false
             },
             onDismiss = { showPicker = false },
