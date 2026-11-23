@@ -1,5 +1,9 @@
 package okoge.house.throttling_app.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +26,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -167,16 +173,25 @@ private fun SpeedControl(
     onDrag: (Int) -> Unit,
     onDragFinished: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isDragged by interactionSource.collectIsDraggedAsState()
+    // 操作中の値は、まだ VPN に反映されていない。色を変えて、反映済みの値と見分けられるようにする
+    val numberColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            isPressed || isDragged -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.onSurface
+        },
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+    )
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = formatKbps(kbps),
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.displayMediumEmphasized,
+            // 端末の既定フォントでは強調スタイルの太さが控えめなので、今と同じ太字にそろえる
             fontWeight = FontWeight.Bold,
-            color = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            },
+            color = numberColor,
         )
 
         Text(
@@ -193,6 +208,7 @@ private fun SpeedControl(
             onValueChangeFinished = onDragFinished,
             valueRange = 0f..1f,
             enabled = enabled,
+            interactionSource = interactionSource,
             modifier = Modifier.fillMaxWidth(),
         )
 
