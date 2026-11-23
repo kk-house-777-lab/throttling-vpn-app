@@ -38,18 +38,19 @@ internal val ContentMaxWidth = 600.dp
 internal fun MainScreen(
     uiState: MainUiState,
     onEvent: (MainEvent) -> Unit,
-    onNavigateToAppList: () -> Unit,
+    // 2 ペイン表示でアプリ一覧が常に横にあるときは null を渡してボタンを隠す
+    onNavigateToAppList: (() -> Unit)?,
     onNavigateToLicenses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .wrapContentWidth(Alignment.CenterHorizontally)
             .widthIn(max = ContentMaxWidth)
             .padding(horizontal = 24.dp)
-            .padding(top = 24.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(top = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top,
     ) {
@@ -79,8 +80,10 @@ internal fun MainScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text("Target: ${uiState.targetAppCount} apps")
-        TextButton(onClick = onNavigateToAppList) {
-            Text("Manage →")
+        if (onNavigateToAppList != null) {
+            TextButton(onClick = onNavigateToAppList) {
+                Text("Manage →")
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -202,12 +205,12 @@ private fun ModeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰めて 1 行に収める
+    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰める
     val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
     if (selected) {
-        Button(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label, maxLines = 1) }
+        Button(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
     } else {
-        OutlinedButton(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label, maxLines = 1) }
+        OutlinedButton(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
     }
 }
 

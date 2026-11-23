@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
@@ -103,7 +105,9 @@ class MainActivity : ComponentActivity() {
             ThrottlingappTheme {
                 val backStack = remember { mutableStateListOf<Any>(MainRoute) }
                 val targetApps by repository.targetApps.collectAsState(initial = emptySet())
-                val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
+                val paneDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+                val isTwoPane = paneDirective.maxHorizontalPartitions > 1
+                val listDetailStrategy = rememberListDetailSceneStrategy<Any>(directive = paneDirective)
                 val appListPane: @Composable (onBack: (() -> Unit)?) -> Unit = { onBack ->
                     val installedApps by produceState(initialValue = emptyList<InstalledApp>()) {
                         value = withContext(Dispatchers.IO) {
@@ -171,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     },
-                                    onNavigateToAppList = { backStack.add(AppListRoute) },
+                                    onNavigateToAppList = if (isTwoPane) null else ({ backStack.add(AppListRoute) }),
                                     onNavigateToLicenses = { backStack.add(LicenseRoute) },
                                 )
                             }

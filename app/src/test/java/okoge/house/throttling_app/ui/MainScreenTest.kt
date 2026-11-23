@@ -31,7 +31,7 @@ class MainScreenTest {
         onSliderChange: (Float) -> Unit = {},
         onSliderChangeFinished: () -> Unit = {},
         onStartStop: () -> Unit = {},
-        onNavigateToAppList: () -> Unit = {},
+        onNavigateToAppList: (() -> Unit)? = {},
         onNavigateToLicenses: () -> Unit = {},
     ) {
         composeTestRule.setContent {
@@ -136,5 +136,11 @@ class MainScreenTest {
         setContent(onNavigateToLicenses = { navigated = true })
         composeTestRule.onNodeWithText("Open Source Licenses").performScrollTo().performClick()
         assert(navigated)
+    }
+
+    @Test
+    fun `アプリ一覧への遷移先が渡されない2ペイン表示では Manage ボタンを出さない`() {
+        setContent(onNavigateToAppList = null)
+        composeTestRule.onNodeWithText("Manage →").assertDoesNotExist()
     }
 }
