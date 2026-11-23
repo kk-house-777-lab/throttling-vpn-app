@@ -56,6 +56,16 @@ class ThrottleVpnServiceTest {
     }
 
     @Test
+    fun `動作していないときに速度変更を受けてもGoは呼ばれず状態もStoppedのまま`() {
+        holder.status = VpnStatus.Stopped
+
+        send(ThrottleVpnService.ACTION_SET_SPEED, speedKBps = 13)
+
+        assertEquals(VpnStatus.Stopped, holder.status)
+        assertEquals(emptyList<String>(), engine.calls)
+    }
+
+    @Test
     fun `停止を受けるとGoを止めて状態はStoppedになる`() {
         send(ThrottleVpnService.ACTION_STOP)
 
