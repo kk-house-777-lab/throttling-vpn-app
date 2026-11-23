@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -15,12 +16,17 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -212,27 +218,44 @@ private fun SpeedControl(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun VpnToggleButton(uiState: MainUiState, onToggle: () -> Unit) {
     val canStart = uiState.isVpnRunning || uiState.targetAppCount > 0
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Button(
-            onClick = onToggle,
-            enabled = canStart && !uiState.isTransitioning,
-            modifier = Modifier.fillMaxWidth(),
-            colors = if (uiState.isVpnRunning) {
-                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            } else {
-                ButtonDefaults.buttonColors()
-            },
+        // 画面全体は standard のモーションのまま、山場にするこのボタンだけ expressive で動かす
+        MaterialTheme(
+            colorScheme = MaterialTheme.colorScheme,
+            motionScheme = MotionScheme.expressive(),
+            shapes = MaterialTheme.shapes,
+            typography = MaterialTheme.typography,
         ) {
-            if (uiState.isTransitioning) {
-                CircularProgressIndicator()
-            } else {
-                Text(
-                    text = if (uiState.isVpnRunning) "Stop VPN" else "Start VPN",
-                    style = MaterialTheme.typography.titleMedium,
-                )
+            val height = ButtonDefaults.LargeContainerHeight
+            ToggleButton(
+                checked = uiState.isVpnRunning,
+                onCheckedChange = { onToggle() },
+                enabled = canStart && !uiState.isTransitioning,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = height),
+                // 停止中は丸、動作中は角を立てた形にして、文字を読まなくても状態がわかるようにする
+                shapes = ToggleButtonDefaults.shapesFor(height),
+                colors = ToggleButtonDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedContainerColor = MaterialTheme.colorScheme.error,
+                    checkedContentColor = MaterialTheme.colorScheme.onError,
+                ),
+                contentPadding = ButtonDefaults.contentPaddingFor(height),
+            ) {
+                if (uiState.isTransitioning) {
+                    LoadingIndicator(color = LocalContentColor.current)
+                } else {
+                    Text(
+                        text = if (uiState.isVpnRunning) "Stop VPN" else "Start VPN",
+                        style = ButtonDefaults.textStyleFor(height),
+                    )
+                }
             }
         }
 
