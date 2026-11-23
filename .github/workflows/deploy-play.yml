@@ -48,33 +48,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     environment: play-store
-    permissions:
-      contents: write
 
     steps:
-      - name: Generate app token
-        id: app-token
-        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Bump versionCode
-        run: |
-          set -euo pipefail
-          current=$(grep -oP '(?<=versionCode = )\d+' app/build.gradle.kts)
-          next=$((current + 1))
-          sed -i "s/versionCode = $current/versionCode = $next/" app/build.gradle.kts
-          echo "versionCode: $current -> $next"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/build.gradle.kts
-          git commit -m "ci: bump versionCode to $next [skip ci]"
-          git push origin HEAD:main
 
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
@@ -93,8 +69,12 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.jks
 
+      # versionCode は実行番号を使う。main に bump を push すると App の鍵とルールセットの bypass が要るため
+      # Re-run は実行番号が変わらず Play に同じ versionCode を弾かれるので、新しく実行し直す
       - name: Build release AAB
-        run: ./gradlew bundlePlayRelease
+        run: |
+          ./gradlew bundlePlayRelease -PplayVersionCode=${{ github.run_number }}
+          echo "versionCode: ${{ github.run_number }}" >> "$GITHUB_STEP_SUMMARY"
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/app/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
