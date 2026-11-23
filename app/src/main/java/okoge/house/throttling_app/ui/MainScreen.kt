@@ -15,15 +15,19 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
@@ -134,29 +138,30 @@ private fun ModeSelector(mode: VpnMode, onModeChange: (VpnMode) -> Unit) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // つながった Button Group にし、選んだものを形と色で強調する
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
         ) {
-            ModeButton("Block", mode == VpnMode.Block, { onModeChange(VpnMode.Block) }, Modifier.weight(1f))
-            ModeButton("Throttle", mode == VpnMode.Throttle, { onModeChange(VpnMode.Throttle) }, Modifier.weight(1f))
-            ModeButton("Unlimited", mode == VpnMode.Unlimited, { onModeChange(VpnMode.Unlimited) }, Modifier.weight(1f))
+            val modes = listOf(VpnMode.Block to "Block", VpnMode.Throttle to "Throttle", VpnMode.Unlimited to "Unlimited")
+            modes.forEachIndexed { index, (value, label) ->
+                ToggleButton(
+                    checked = mode == value,
+                    onCheckedChange = { onModeChange(value) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { role = Role.RadioButton },
+                    shapes = when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        modes.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+                    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰める
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                ) {
+                    Text(label, maxLines = 1)
+                }
+            }
         }
-    }
-}
-
-@Composable
-private fun ModeButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    // 2 ペイン表示の狭いペインでも「Unlimited」が折り返さないよう、左右の余白を詰める
-    val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-    if (selected) {
-        Button(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
-    } else {
-        OutlinedButton(onClick = onClick, modifier = modifier, contentPadding = contentPadding) { Text(label) }
     }
 }
 
